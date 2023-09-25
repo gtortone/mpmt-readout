@@ -346,7 +346,7 @@ retry:
 
 int main(int argc, const char **argv) {
 
-   argparse::ArgumentParser program("evproducer-mt");
+   argparse::ArgumentParser program("evproducer");
 
    // START parsing command line options
 
