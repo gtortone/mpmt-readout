@@ -106,7 +106,7 @@ auto control = [](std::string thread_id) {
 // DMA transfer THREAD
 auto dma_transfer = [](std::string thread_id) {
 
-   uint16_t buffer_id;
+   int32_t buffer_id;      // int32_t due to dma-proxy ioctl prototype: _IOW('a', 'b', int32_t *)
    proxy_status status;
    bool next_xfer = true;
 
@@ -136,6 +136,12 @@ auto dma_transfer = [](std::string thread_id) {
                q1.push(buffer_id);
             else                       // in remote mode send completed buffer id to zmq_transfer thread
                q2.push(buffer_id);
+
+         if(debug) {
+            for(int i=0; i<16; i++)
+               printf("0x%X - ", rx_channel.buf_ptr[buffer_id].buffer[i]);
+            printf("\n");
+         }
 
             buffer_id = q1.pop();
 
