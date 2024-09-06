@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import zmq
-from struct import unpack
+import struct
 from time import sleep
 
 context = zmq.Context()
@@ -31,4 +31,15 @@ frontend.bind("tcp://*:5555")
 while True:
     message = frontend.recv_multipart()
     print("message received")
-    #print(message[1][0:32])
+    for part in message:
+        if(len(part) != 1):
+            l = int(len(part)/2)
+            v = struct.unpack_from(f"{l}H", part)
+            i = 0
+            for b in v:
+                print(f'{b:04x} ', end='')
+                i = i + 1
+                if(i % 8) == 0:
+                    print("")
+                    i = 0
+
