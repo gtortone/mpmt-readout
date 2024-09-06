@@ -8,15 +8,17 @@ context = zmq.Context()
 
 ##
 
-socket = context.socket(zmq.PUB)
-socket.bind("tcp://0.0.0.0:4444")
-topic = "control"
-payload = "start"
+# run control socket
 
-sleep(1)
-
-socket.send_string(topic, flags=zmq.SNDMORE)
-socket.send_string(payload)
+#socket = context.socket(zmq.PUB)
+#socket.bind("tcp://0.0.0.0:4444")
+#topic = "control"
+#payload = "start"
+#
+#sleep(1)
+#
+#socket.send_string(topic, flags=zmq.SNDMORE)
+#socket.send_string(payload)
 
 ##
 
