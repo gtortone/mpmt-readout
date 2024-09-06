@@ -23,9 +23,6 @@ context = zmq.Context()
 ##
 
 frontend = context.socket(zmq.ROUTER)
-
-poller = zmq.Poller()
-poller.register(frontend, zmq.POLLIN)
 frontend.bind("tcp://*:5555")
 
 while True:
