@@ -34,6 +34,7 @@ uint16_t port;
 uint16_t mpmtid;
 uint16_t size;
 std::string mode;
+bool runcontrol;
 
 // DMA
 const std::string rx_channel_name = "dma_proxy_rx";
@@ -389,6 +390,11 @@ int main(int argc, const char **argv) {
     .default_value(uint16_t(32768))
     .scan<'u', uint16_t>();
 
+   program.add_argument("--disable-rc")
+    .help("disable ZMQ run control")
+    .default_value(false)
+    .implicit_value(true);
+
    try {
       program.parse_args(argc, argv);
    } catch (const std::runtime_error& err) {
@@ -412,6 +418,7 @@ int main(int argc, const char **argv) {
    size = program.get<uint16_t>("--size");
    debug = program.get<bool>("--debug");
    verbose = program.get<bool>("--verbose");
+   runcontrol = !(program.get<bool>("--disable-rc"));
 
    if(verbose)
       std::cout << "I: verbose ON" << std::endl;
@@ -450,7 +457,10 @@ int main(int argc, const char **argv) {
       sock.set(zmq::sockopt::linger, 0);
       sock.connect(url);
 
-      th0 = std::thread(control, "control");
+      if(runcontrol)
+         th0 = std::thread(control, "control");
+      else run_state = "running";
+
       th2 = std::thread(zmq_transfer, "zmq_xfer");
 
       fname = std::string(EVENT_CACHE_FILE) + "." + std::to_string(std::time(0));
@@ -506,7 +516,8 @@ int main(int argc, const char **argv) {
    } // end while
 
    if(mode == "remote") {
-      th0.join();
+      if(runcontrol)
+         th0.join();
       th2.join();
       th3.join();
       th4.join();
