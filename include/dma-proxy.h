@@ -12,4 +12,5 @@ struct channel_buffer {
    unsigned int buffer[BUFFER_SIZE / sizeof(unsigned int)];
    proxy_status status;
    unsigned int length;
+   unsigned int transferred_length;
 } __attribute__ ((aligned (1024)));		/* 64 byte alignment required for DMA, but 1024 handy for viewing memory */

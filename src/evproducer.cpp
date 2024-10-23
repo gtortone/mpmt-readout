@@ -27,7 +27,6 @@
 
 // command line arguments
 bool debug = false;
-bool verbose = false;
 bool local = false;
 std::string host;
 uint16_t port;
@@ -127,10 +126,11 @@ auto dma_transfer = [](std::string thread_id) {
          status = rx_channel.buf_ptr[buffer_id].status;
 
          if(debug)
-            std::cout << thread_id << ": buffer " << buffer_id << " transfer completed - status: " << status << std::endl;
+            std::cout << thread_id << ": buffer " << buffer_id << " transfer completed - status: " << 
+               status << " transferred_length: " << rx_channel.buf_ptr[buffer_id].transferred_length << std::endl;
 
          if (status == PROXY_NO_ERROR) {
-   
+
             next_xfer = true;
    
             if(mode == "local")        // in local mode reinsert completed buffer id
@@ -139,8 +139,9 @@ auto dma_transfer = [](std::string thread_id) {
                q2.push(buffer_id);
 
          if(debug) {
+            uint8_t *buf = reinterpret_cast<uint8_t *>(rx_channel.buf_ptr[buffer_id].buffer);
             for(int i=0; i<16; i++)
-               printf("0x%X - ", rx_channel.buf_ptr[buffer_id].buffer[i]);
+               printf("0x%X - ", buf[i]);
             printf("\n");
          }
 
@@ -156,7 +157,6 @@ auto dma_transfer = [](std::string thread_id) {
 auto zmq_transfer = [](std::string thread_id) {
 
    uint16_t buffer_id;
-   uint16_t *bufusint;
 
    while(true) {
 
@@ -164,9 +164,7 @@ auto zmq_transfer = [](std::string thread_id) {
 
          buffer_id = q2.pop();
 
-         bufusint = reinterpret_cast<uint16_t *>(rx_channel.buf_ptr[buffer_id].buffer);
-
-         zmq::const_buffer buf = zmq::buffer(bufusint, rx_channel.buf_ptr[buffer_id].length);
+         zmq::const_buffer buf = zmq::buffer(rx_channel.buf_ptr[buffer_id].buffer, rx_channel.buf_ptr[buffer_id].transferred_length);
 
          smtx.lock();
             auto rc = sock.send(buf, zmq::send_flags::dontwait);
@@ -180,18 +178,12 @@ auto zmq_transfer = [](std::string thread_id) {
 
          if(rc.has_value()) {
             
-            if(rc.value() != rx_channel.buf_ptr[buffer_id].length) {          // send failed (partial send)
+            if(rc.value() != rx_channel.buf_ptr[buffer_id].transferred_length) {          // send failed (partial send)
 
                std::cout << thread_id << ": partial buffer sent " << rc.value() << std::endl;
 
             } else {       // send success
                
-               if (verbose) {
-               for(unsigned int i=0; i<BUFFER_SIZE/sizeof(unsigned int); i++)
-                  std::cout << thread_id << ": buffer " << buffer_id << " [" << i << "]: 0x" << std::hex 
-                     << bufusint[i] << std::dec << std::endl;
-               }
-
                q1.push(buffer_id);
             }
 
@@ -367,11 +359,6 @@ int main(int argc, const char **argv) {
     .default_value(false)
     .implicit_value(true);
 
-   program.add_argument("--verbose")
-    .help("print events on stdout")
-    .default_value(false)
-    .implicit_value(true);
-
    program.add_argument("--host")
     .help("receiver hostname");
 
@@ -417,11 +404,7 @@ int main(int argc, const char **argv) {
 
    size = program.get<uint16_t>("--size");
    debug = program.get<bool>("--debug");
-   verbose = program.get<bool>("--verbose");
    runcontrol = !(program.get<bool>("--disable-rc"));
-
-   if(verbose)
-      std::cout << "I: verbose ON" << std::endl;
 
    // END parsing command line options
 
