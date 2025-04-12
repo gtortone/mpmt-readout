@@ -1,6 +1,6 @@
 
 #define BUFFER_SIZE 		   (32 * 1024)	 		/* must match driver exactly */
-#define RX_BUFFER_COUNT 	9500              /* app only, must be <= to the number in the driver */
+#define RX_BUFFER_COUNT 	8000              /* app only, must be <= to the number in the driver */
 
 #define FINISH_XFER 		_IOW('a','a',int32_t*)
 #define START_XFER      _IOW('a','b',int32_t*)
