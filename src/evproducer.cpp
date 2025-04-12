@@ -336,6 +336,7 @@ retry:
          } else { // end if (cached_buffers > 0)
                
             flush_sleep_us = MAX_FLUSH_SLEEP_US;
+            std::this_thread::sleep_for(std::chrono::microseconds(flush_sleep_us));
          }
 
       } else std::this_thread::sleep_for(std::chrono::milliseconds(50));
