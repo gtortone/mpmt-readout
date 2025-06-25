@@ -18,6 +18,8 @@ private:
    // Condition variable for signaling
    std::condition_variable m_cond;
 
+   bool keep_running = true;
+
 public:
    // Pushes an element to the queue
    void push(T item)
@@ -43,7 +45,7 @@ public:
 
       // wait until queue is not empty
       m_cond.wait(lock,
-               [this]() { return !m_queue.empty(); });
+              [this]() { return (!m_queue.empty() || !keep_running); });
 
       // retrieve item
       T item = m_queue.front();
@@ -54,6 +56,8 @@ public:
    }
 
    int size() { return m_queue.size(); }
+
+   void stop() { keep_running = false; m_cond.notify_all(); }
 };
 
 #if 0

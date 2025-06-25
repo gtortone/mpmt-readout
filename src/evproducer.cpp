@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <filesystem>
+#include <signal.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <zmq_addon.hpp>
@@ -51,6 +52,7 @@ zmq::context_t ctx;
 
 // run control
 std::string run_state;
+static volatile bool keep_running = true;
 
 // queues
 TSQueue<uint16_t> q1, q2, q3;
@@ -74,6 +76,10 @@ uint16_t tx_flush_bandwith_mbps;
 std::mutex tmtx;
 uint32_t flush_sleep_us = MAX_FLUSH_SLEEP_US;
 
+void intHandler(int dummy) {
+   keep_running = false;
+}
+
 // run control THREAD
 auto control = [](std::string thread_id) {
 
@@ -84,7 +90,7 @@ auto control = [](std::string thread_id) {
 
    std::cout << "I: control thread subscribed to " << url << std::endl;
 
-   while(true) {
+   while(keep_running) {
 
       zmq::message_t topic;
       zmq::message_t payload;
@@ -115,7 +121,7 @@ auto dma_transfer = [](std::string thread_id) {
    
    buffer_id = q1.pop();
 
-   while(true) {
+   while(keep_running) {
 
       if(run_state == "running") {
 
@@ -158,7 +164,7 @@ auto zmq_transfer = [](std::string thread_id) {
 
    uint16_t buffer_id;
 
-   while(true) {
+   while(keep_running) {
 
       if(run_state == "running") {
 
@@ -206,7 +212,7 @@ auto disk_cache = [](std::string thread_id) {
    std::ofstream evcache;
    evcache = std::ofstream(fname, std::ios::out | std::ios::binary);
 
-   while (true) {
+   while (keep_running) {
 
       if(run_state == "running") {
 
@@ -241,7 +247,7 @@ auto disk_flush = [](std::string thread_id) {
 
    start = std::chrono::steady_clock::now();
 
-   while (true) {
+   while (keep_running) {
 
       // update stats
       std::chrono::steady_clock::duration time_elapsed = std::chrono::steady_clock::now() - start;
@@ -347,6 +353,8 @@ retry:
 int main(int argc, const char **argv) {
 
    argparse::ArgumentParser program("evproducer");
+
+   signal(SIGINT, intHandler);
 
    // START parsing command line options
 
@@ -471,7 +479,7 @@ int main(int argc, const char **argv) {
    std::getline(eth0_stats_tx, line);
    prev_tx_bytes = std::stoll(line);
 
-   while(true) {
+   while(keep_running) {
 
       if(run_state == "running") {
 
@@ -499,15 +507,29 @@ int main(int argc, const char **argv) {
 
    } // end while
 
+   q1.stop();
+   q2.stop();
+   q3.stop();
+
    if(mode == "remote") {
-      if(runcontrol)
+      if(runcontrol) {
          th0.join();
+         printf(">>>> control thread joined <<<<\n");
+      }
+
       th2.join();
+      printf(">>>> zmq_xfer thread joined <<<<\n");
+      
       th3.join();
+      printf(">>>> disk_cache thread joined <<<<\n");
+
       th4.join();
+      printf(">>>> disk_flush thread joined <<<<\n");
    }
 
    th1.join();
+   printf(">>>> dma_xfer thread joined <<<<\n");
+
    eth0_stats_tx.close();
 
    // DMA close
